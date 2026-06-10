@@ -1,0 +1,111 @@
+import math
+import random
+
+# ==========================================
+# 1. 產生測試案例：隨機生成 N 個城市的 (x, y) 座標
+# ==========================================
+num_cities = 10
+random.seed(42) # 固定 seed 方便重現相同的測試結果
+cities = [(random.randint(0, 100), random.randint(0, 100)) for _ in range(num_cities)]
+
+print("【測試案例：城市座標】")
+for i, coord in enumerate(cities):
+    print(f"城市 {i}: {coord}")
+print("-" * 40)
+
+# ==========================================
+# 2. 基本函數：計算距離
+# ==========================================
+def distance(c1, c2):
+    """計算兩個城市間的歐幾里得距離"""
+    return math.sqrt((c1[0] - c2[0])**2 + (c1[1] - c2[1])**2)
+
+def path_distance(path):
+    """計算整條 TSP 路徑的總距離 (包含最後繞回起點)"""
+    dist = 0
+    n = len(path)
+    for i in range(n):
+        # path[i] 是當前城市，path[(i + 1) % n] 是下一個城市，% n 確保最後一個城市連回第一個
+        dist += distance(cities[path[i]], cities[path[(i + 1) % n]])
+    return dist
+
+# ==========================================
+# 3. 題目要求的函數：height 與 neighbor
+# ==========================================
+def height(path):
+    """
+    Height 函數：距離 * -1
+    爬山演算法會尋找 height 最高的值，等同於尋找距離最短的路徑。
+    """
+    return -1 * path_distance(path)
+
+def get_best_neighbor(path):
+    """
+    Neighbor 函數：嘗試所有可能的 2-opt 交換，回傳 Height 最高的鄰居
+    提示邏輯：選兩個邊 (a,b)(c,d) 改為 (a,d)(b,c)，等同於將路徑陣列中 b 到 c 的部分反轉。
+    """
+    best_neighbor = path[:]
+    max_h = height(path)
+    n = len(path)
+
+    # 窮舉所有可能的兩個不相鄰的邊
+    for i in range(n - 1):
+        for j in range(i + 2, n):
+            # 避免剛好頭尾相連的邊造成無效反轉
+            if i == 0 and j == n - 1:
+                continue
+            
+            # 產生鄰居：將 path[i+1] 到 path[j] 的這段子陣列反轉
+            # 例如 [0, 1, 2, 3, 4] 選擇反轉 index 1 到 3 -> [0, 3, 2, 1, 4]
+            neighbor = path[:i+1] + path[i+1:j+1][::-1] + path[j+1:]
+            
+            # 計算鄰居的 height
+            h = height(neighbor)
+            
+            # 如果這個鄰居的 height 比目前找到的都高（距離更短），就記錄下來
+            if h > max_h:
+                max_h = h
+                best_neighbor = neighbor
+                
+    return best_neighbor
+
+# ==========================================
+# 4. 爬山演算法主體
+# ==========================================
+def hill_climbing(initial_path):
+    current_path = initial_path
+    current_h = height(current_path)
+
+    print(f"初始路徑: {current_path}, 初始距離: {-current_h:.2f}")
+
+    step = 0
+    while True:
+        # 尋找所有鄰居中最好的一個
+        next_path = get_best_neighbor(current_path)
+        next_h = height(next_path)
+
+        # 如果最好的鄰居並沒有比現在好（或相等），代表已經走到局部最高點（區域最佳解），演算法結束
+        if next_h <= current_h:
+            break
+
+        # 否則，移動到那個更好的鄰居
+        current_path = next_path
+        current_h = next_h
+        step += 1
+        print(f"第 {step} 步爬升 -> 找到更好路徑: {current_path}, 距離縮短為: {-current_h:.2f}")
+
+    return current_path
+
+# ==========================================
+# 5. 執行測試
+# ==========================================
+# 初始解：1 => 2 => 3 ... => n => 1 (在程式中對應 index 0 => 1 => 2 ... => n-1 => 0)
+initial_solution = list(range(num_cities))
+
+print("\n【開始爬山演算法】")
+best_path = hill_climbing(initial_solution)
+
+print("\n" + "=" * 40)
+print(f"最終最佳路徑 (區域最佳解): {best_path}")
+print(f"最終最短距離: {path_distance(best_path):.2f}")
+print("=" * 40)
